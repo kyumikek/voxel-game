@@ -2,14 +2,14 @@ package main
 import rl "raylib"
 
 import "core:fmt"
-
-Cube :: struct #align(16) {
+import noise "noise"
+Cube :: struct #packed{
     x : u16,
     y : u16, 
     z : u16
 }
 
-Faces :: struct {
+Faces :: struct #packed{ 
     front : bool,
     back : bool,
     top : bool,
@@ -17,11 +17,9 @@ Faces :: struct {
     left : bool,
     right : bool
 }
-
-Game :: struct {
+Game :: struct  {
     cam : rl.Camera3D,
-    aliveCubes : map[Cube]bool,
-    faces : map[Cube]Faces,
+    aliveCubes : [1024][257][1024]bool,
     meshes : map[Cube]rl.Mesh,
     models : map[Cube]rl.Model
 }
@@ -142,26 +140,30 @@ genMesh :: proc(_blocks : [dynamic]Cube, _faces : [dynamic]Faces) -> rl.Mesh {
     return mesh
 }
 genWorld :: proc(_game : ^Game) {
-    for x : u16 = 0; x < 128; x+=1 {
-        for z : u16 = 0; z < 128; z+=1 {
-            for y : u16 = 0; y < 128; y+=1 { 
-                _game.aliveCubes[{x,y,z}] = true
-                _game.faces[{x,y,z}] = {false,false,false,false,false,false}
+    p := noise.init_permutation()
+    for x : u16 = 1; x < 1024; x+=1 {
+        for z : u16 = 1; z < 1024; z+=1 {
+            height := noise.perlin(cast(f32)x/10,0,cast(f32)z/10,p) * 200
+            for y : u16 = 1; y < 256; y+=1 { 
+                _game.aliveCubes[x][y][z] = false
+                if  cast(f32)y<height {
+                    _game.aliveCubes[x][y][z] = true
+                }
+                
             }
         }
     }
 }
-checkObscures :: proc(_game : ^Game, x : u16, y : u16, z : u16) {
-    faces : Faces = {
-        _game.aliveCubes[{x,y,z+1}], //front
-        _game.aliveCubes[{x,y,z-1}], //back
-        _game.aliveCubes[{x,y+1,z}], //top
-        _game.aliveCubes[{x,y-1,z}], //bottom
-        _game.aliveCubes[{x-1,y,z}], //left
-        _game.aliveCubes[{x+1,y,z}], //right
-    }
-    //fmt.println(faces)
-    _game.faces[{x,y,z}] = faces
+checkObscures :: proc(_game : ^Game, x : u16, y : u16, z : u16) -> Faces {
+    faces : Faces = {false,false,false,false,false,false}
+    if (z+1<1024) {if (_game.aliveCubes[x][y][z+1]) {faces.front = true}} //front
+    if (z-1>0) {if (_game.aliveCubes[x][y][z-1]) {faces.back = true}} //back
+    if (y+1<1024) {if (_game.aliveCubes[x][y+1][z]) {faces.top = true}} //top
+    if (y-1>0) {if (_game.aliveCubes[x][y-1][z]) {faces.bottom = true}} //bottom
+    if (x-1>0) {if (_game.aliveCubes[x-1][y][z]) {faces.left = true}} //left
+    if (x+1<1024) {if (_game.aliveCubes[x+1][y][z]) {faces.right = true}} //right
+    
+    return faces
 }
 genChunkModel :: proc(_game : ^Game, x : u16, y : u16, z : u16) {
     blocks : [dynamic]Cube
@@ -169,12 +171,14 @@ genChunkModel :: proc(_game : ^Game, x : u16, y : u16, z : u16) {
     for chunkx : u16 = 0; chunkx < 17; chunkx+=1 {
         for chunkz : u16 = 0; chunkz < 17; chunkz+=1 {
             for chunky : u16 = 0; chunky < 256; chunky+=1 { 
-                if (_game.aliveCubes[{chunkx+x*16,chunky+y*16,chunkz+z*16}]) {
-                    checkObscures(_game,chunkx+x*16,chunky+y*16,chunkz+z*16)
-                    append(&blocks,Cube{chunkx+x*16,chunky+y*16,chunkz+z*16})
-                    append(&faces,_game.faces[{chunkx+x*16,chunky+y*16,chunkz+z*16}])
-                    
+                if(chunkx+x*16>0 && chunky+y*16 > 0 && chunkz+z*16>0 && chunkx+x*16<1024 && chunky+y*16 <256 && chunkz+z*16<1024) {
+                    if (_game.aliveCubes[chunkx+x*16][chunky+y*16][chunkz+z*16]) {
+                        append(&blocks,Cube{chunkx+x*16,chunky+y*16,chunkz+z*16})
+                        append(&faces,checkObscures(_game,chunkx+x*16,chunky+y*16,chunkz+z*16))
+                        
+                    }
                 }
+                
             }
         }
     }
@@ -182,8 +186,13 @@ genChunkModel :: proc(_game : ^Game, x : u16, y : u16, z : u16) {
     _game.models[{x,y,z}] = rl.LoadModelFromMesh(_game.meshes[{x,y,z}])
 }
 runGame :: proc(_game : ^Game) {
+    _game.cam = genCam()
+    _game.models = {}
+    _game.meshes = {}
+    _game.aliveCubes = {}
+
     rl.InitWindow(1200,800,"a");
-    rl.SetTargetFPS(60);
+    //rl.SetTargetFPS(60);
     rl.rlDisableBackfaceCulling();
     rl.DisableCursor();
     rl.rlEnableWireMode();
@@ -200,10 +209,14 @@ runGame :: proc(_game : ^Game) {
         defer rl.EndDrawing();
         rl.ClearBackground(rl.SKYBLUE);
         rl.UpdateCamera(&_game.cam,.FIRST_PERSON)
+        if rl.IsKeyDown(.SPACE) {
+            _game.cam.target.y += 1
+            _game.cam.position.y += 1
+        }
         rl.BeginMode3D(_game.cam);
         for x : u16 = 0; x < 32; x+=1 {
             for y : u16 = 0; y < 32; y+=1 {
-                rl.DrawModel(_game.models[{x,0,y}],{cast(f32)x,0,cast(f32)y},1.0,rl.WHITE)
+                rl.DrawModel(_game.models[{x,0,y}],{cast(f32)x,0,cast(f32)y},1.0,rl.GRAY)
         
             }
         }
@@ -213,7 +226,7 @@ runGame :: proc(_game : ^Game) {
 }
 
 main :: proc() {
-    _game := Game{genCam(),{},{},{},{}}
-    runGame(&_game)
+    _game := new(Game)
+    runGame(_game)
     
 }
