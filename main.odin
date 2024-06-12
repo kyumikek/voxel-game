@@ -291,7 +291,6 @@ updatePlayer :: proc(_game : ^Game) {
 
 runGame :: proc(_game : ^Game) {
     _game.cam = genCam()
-    _game.models = {}
     _game.meshes = {}
     _game.aliveCubes = {}
 
