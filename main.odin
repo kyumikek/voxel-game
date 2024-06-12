@@ -23,8 +23,8 @@ Faces :: struct {
 Game :: struct  {
     cam : rl.Camera3D,
     aliveCubes : [1024][257][1024]u8,
-    meshes : map[Cube]rl.Mesh,
-    models : map[Cube]rl.Model,
+    meshes : [64][64]rl.Mesh,
+    models : [64][64]rl.Model,
     texture : rl.Texture2D
 }
 
@@ -240,9 +240,9 @@ genChunkModel :: proc(_game : ^Game, x : i16, y : i16, z : i16, texture : rl.Tex
             }
         }
     }
-    _game.meshes[{x,y,z}] = genMesh(blocks,faces,types,ambients)
-    _game.models[{x,y,z}] = rl.LoadModelFromMesh(_game.meshes[{x,y,z}])
-    _game.models[{x,y,z}].materials[0].maps[0].texture = texture
+    _game.meshes[x][z] = genMesh(blocks,faces,types,ambients)
+    //_game.models[x][z] = rl.LoadModelFromMesh(_game.meshes[x][z])
+    //_game.models[x][z].materials[0].maps[0].texture = texture
 }
 changeBlock :: proc(_game : ^Game, pos : Cube, _type : u8) {
 
@@ -251,8 +251,8 @@ changeBlock :: proc(_game : ^Game, pos : Cube, _type : u8) {
             _game.aliveCubes[pos.x][pos.y][pos.z] = _type
             chunkPos := Cube{i16(int(pos.x/16)),0,i16(int(pos.z/16))}
             
-            rl.UnloadMesh(_game.meshes[chunkPos])
-            
+            rl.UnloadMesh(_game.meshes[chunkPos.x][chunkPos.z])
+            //rl.UnloadModel(_game.models[chunkPos.x][chunkPos.z])
             genChunkModel(_game,chunkPos.x,0,chunkPos.z, _game.texture)
         
         }
@@ -309,6 +309,11 @@ runGame :: proc(_game : ^Game) {
             
         }    
     }
+    mat : rl.Material = rl.LoadMaterialDefault();
+
+    mat.maps[0].texture = _game.texture;
+
+    //DrawMesh(yourMesh, yourMatrix, mat);
     //model := rl.LoadModelFromMesh(genMesh(_game.cubes))
     for !rl.WindowShouldClose() {
         rl.BeginDrawing();
@@ -318,7 +323,7 @@ runGame :: proc(_game : ^Game) {
         rl.BeginMode3D(_game.cam);
         for x : i16 = 0; x < 64; x+=1 {
             for y : i16 = 0; y < 64; y+=1 {
-                rl.DrawModel(_game.models[{x,0,y}],{cast(f32)x,0,cast(f32)y},1.0,rl.GRAY)
+                rl.DrawMesh(_game.meshes[x][y],mat,rl.MatrixTranslate(1,1,1))
         
             }
         }
