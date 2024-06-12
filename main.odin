@@ -24,7 +24,6 @@ Game :: struct  {
     cam : rl.Camera3D,
     aliveCubes : [1024][257][1024]u8,
     meshes : [64][64]rl.Mesh,
-    models : [64][64]rl.Model,
     texture : rl.Texture2D
 }
 
