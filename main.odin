@@ -1,18 +1,18 @@
 package main
 import rl "raylib"
-
+import "core:math"
 import "core:fmt"
 import noise "noise"
-Cube :: struct #packed{
-    x : u16,
-    y : u16, 
-    z : u16
+Cube :: struct {
+    x : i16,
+    y : i16, 
+    z : i16
 }
 Rect :: struct {
     x : f32,
     y : f32,
 }
-Faces :: struct #packed{ 
+Faces :: struct { 
     front : bool,
     back : bool,
     top : bool,
@@ -24,7 +24,8 @@ Game :: struct  {
     cam : rl.Camera3D,
     aliveCubes : [1024][257][1024]u8,
     meshes : map[Cube]rl.Mesh,
-    models : map[Cube]rl.Model
+    models : map[Cube]rl.Model,
+    texture : rl.Texture2D
 }
 
 ChunkModel :: struct {
@@ -175,23 +176,29 @@ genMesh :: proc(_blocks : [dynamic]Cube, _faces : [dynamic]Faces, _types : [dyna
 }
 genWorld :: proc(_game : ^Game) {
     p := noise.init_permutation()
-    for x : u16 = 1; x < 1024; x+=1 {
-        for z : u16 = 1; z < 1024; z+=1 {
+    for x : i16 = 1; x < 1024; x+=1 {
+        for z : i16 = 1; z < 1024; z+=1 {
             height := noise.perlin(cast(f32)x/20,0,cast(f32)z/20,p)  + noise.perlin(cast(f32)x/10,0,cast(f32)z/10,p) 
             //height *= 200+50
-            for y : u16 = 1; y < 256; y+=1 { 
+            highest_point : i16
+            for y : i16 = 1; y < 256; y+=1 { 
                 _game.aliveCubes[x][y][z] = 255
                 if  ((y<100 && height<0) || (y<101 && height>=0)) {
                     _game.aliveCubes[x][y][z] = 0
+                    highest_point = y
                 }
             }
-            if (rl.GetRandomValue(0,100)==5) {
+            if (rl.GetRandomValue(0,200)==1) {
+                for y : i16 = 0; y< 5; y+=1 {
+                    _game.aliveCubes[x][y+highest_point][z] = 8
 
+                }
+                    
             }
         }
     }
 }
-checkObscures :: proc(_game : ^Game, x : u16, y : u16, z : u16) -> Faces {
+checkObscures :: proc(_game : ^Game, x : i16, y : i16, z : i16) -> Faces {
     faces : Faces = {false, false, false, false, false, false}
     if (z+1 < 1024) { if (_game.aliveCubes[x][y][z+1]!=255) { faces.back = true } } // back
     if (z > 0) { if (_game.aliveCubes[x][y][z-1]!=255) { faces.front = true } } // front
@@ -202,7 +209,7 @@ checkObscures :: proc(_game : ^Game, x : u16, y : u16, z : u16) -> Faces {
 
     return faces
 }
-checkAmbience :: proc(_game : ^Game, x : u16, y : u16, z : u16) -> Faces {
+checkAmbience :: proc(_game : ^Game, x : i16, y : i16, z : i16) -> Faces {
     faces : Faces = {false, false, false, false, false, false}
     if (y+1<256) {
         if (z+1 < 1024) { if (_game.aliveCubes[x][y+1][z+1]!=255) { faces.back = true } } // back
@@ -213,14 +220,14 @@ checkAmbience :: proc(_game : ^Game, x : u16, y : u16, z : u16) -> Faces {
     
     return faces
 }
-genChunkModel :: proc(_game : ^Game, x : u16, y : u16, z : u16, texture : rl.Texture2D) {
+genChunkModel :: proc(_game : ^Game, x : i16, y : i16, z : i16, texture : rl.Texture2D) {
     blocks : [dynamic]Cube
     faces : [dynamic]Faces
     types : [dynamic]u8
     ambients : [dynamic]Faces
-    for chunkx : u16 = 0; chunkx < 17; chunkx+=1 {
-        for chunkz : u16 = 0; chunkz < 17; chunkz+=1 {
-            for chunky : u16 = 0; chunky < 256; chunky+=1 { 
+    for chunkx : i16 = 0; chunkx < 17; chunkx+=1 {
+        for chunkz : i16 = 0; chunkz < 17; chunkz+=1 {
+            for chunky : i16 = 0; chunky < 256; chunky+=1 { 
                 if(chunkx+x*16>0 && chunky+y*16 > 0 && chunkz+z*16>0 && chunkx+x*16<1024 && chunky+y*16 <256 && chunkz+z*16<1024) {
                     if (_game.aliveCubes[chunkx+x*16][chunky+y*16][chunkz+z*16]!=255) {
                         append(&blocks,Cube{chunkx+x*16,chunky+y*16,chunkz+z*16})
@@ -237,7 +244,20 @@ genChunkModel :: proc(_game : ^Game, x : u16, y : u16, z : u16, texture : rl.Tex
     _game.models[{x,y,z}] = rl.LoadModelFromMesh(_game.meshes[{x,y,z}])
     _game.models[{x,y,z}].materials[0].maps[0].texture = texture
 }
+changeBlock :: proc(_game : ^Game, pos : Cube, _type : u8) {
 
+    if (pos.x>-1 && pos.z > -1 && pos.y > -1) {
+        if (_game.aliveCubes[pos.x][pos.y][pos.z] == 255 && _type != 255) || (_game.aliveCubes[pos.x][pos.y][pos.z] != 255 && _type == 255) {
+            _game.aliveCubes[pos.x][pos.y][pos.z] = _type
+            chunkPos := Cube{i16(int(pos.x/16)),0,i16(int(pos.z/16))}
+            
+            rl.UnloadMesh(_game.meshes[chunkPos])
+            
+            genChunkModel(_game,chunkPos.x,0,chunkPos.z, _game.texture)
+        
+        }
+    }
+}
 updatePlayer :: proc(_game : ^Game) {
     rl.UpdateCamera(&_game.cam,.FIRST_PERSON)
     if rl.IsKeyDown(.SPACE) {
@@ -254,7 +274,20 @@ updatePlayer :: proc(_game : ^Game) {
     if rl.IsKeyDown(.H) {
         rl.rlDisableWireMode();
     }
-    
+    vec : Cube= {cast(i16)(_game.cam.target.x-_game.cam.position.x),cast(i16)(_game.cam.target.y-_game.cam.position.y),cast(i16)(_game.cam.target.z-_game.cam.position.z)}
+    vec.x += i16(_game.cam.target.x)
+    vec.y += i16(_game.cam.target.y)
+    vec.z += i16(_game.cam.target.z)
+    vec = Cube{i16(int(vec.x)),i16(int(vec.y)),i16(int(vec.z))}
+    //fmt.println(vec)
+    if (rl.IsMouseButtonDown(.RIGHT)) {
+        changeBlock(_game,vec,0)
+    }
+    if (rl.IsMouseButtonDown(.LEFT)) {
+        changeBlock(_game,vec,255)
+    }
+
+    //rl.DrawCube({f32(vec.x),f32(vec.y),f32(vec.z)}, 1,1,1,rl.RED)
 }
 
 runGame :: proc(_game : ^Game) {
@@ -269,10 +302,10 @@ runGame :: proc(_game : ^Game) {
     rl.DisableCursor();
     //rl.rlEnableWireMode();
     genWorld(_game);
-    tx := rl.LoadTexture("textures/texture_pack.png")
-    for x : u16 = 0; x < 32; x+=1 {
-        for y : u16 = 0; y < 32; y+=1 {
-            genChunkModel(_game,x,0,y,tx)
+    _game.texture = rl.LoadTexture("textures/texture_pack.png")
+    for x : i16 = 0; x < 64; x+=1 {
+        for y : i16 = 0; y < 64; y+=1 {
+            genChunkModel(_game,x,0,y,_game.texture)
             
         }    
     }
@@ -282,14 +315,14 @@ runGame :: proc(_game : ^Game) {
         defer rl.EndDrawing();
         rl.ClearBackground(rl.SKYBLUE);
         
-        updatePlayer(_game);
         rl.BeginMode3D(_game.cam);
-        for x : u16 = 0; x < 32; x+=1 {
-            for y : u16 = 0; y < 32; y+=1 {
+        for x : i16 = 0; x < 64; x+=1 {
+            for y : i16 = 0; y < 64; y+=1 {
                 rl.DrawModel(_game.models[{x,0,y}],{cast(f32)x,0,cast(f32)y},1.0,rl.GRAY)
         
             }
         }
+        updatePlayer(_game);
         rl.EndMode3D();
         rl.DrawFPS(0,0);
     }
