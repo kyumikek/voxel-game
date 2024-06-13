@@ -249,9 +249,8 @@ changeBlock :: proc(_game : ^Game, pos : Cube, _type : u8) {
         if (_game.aliveCubes[pos.x][pos.y][pos.z] == 255 && _type != 255) || (_game.aliveCubes[pos.x][pos.y][pos.z] != 255 && _type == 255) {
             _game.aliveCubes[pos.x][pos.y][pos.z] = _type
             chunkPos := Cube{i16(int(pos.x/16)),0,i16(int(pos.z/16))}
-            
             rl.UnloadMesh(_game.meshes[chunkPos.x][chunkPos.z])
-            //rl.UnloadModel(_game.models[chunkPos.x][chunkPos.z])
+            rl.UpdateMeshBuffer(_game.meshes[chunkPos.x][chunkPos.z],0, {}, 0, 0) //seems to fix the bug !?!?
             genChunkModel(_game,chunkPos.x,0,chunkPos.z, _game.texture)
         
         }
@@ -301,8 +300,8 @@ runGame :: proc(_game : ^Game) {
     //rl.rlEnableWireMode();
     genWorld(_game);
     _game.texture = rl.LoadTexture("textures/texture_pack.png")
-    for x : i16 = 0; x < 64; x+=1 {
-        for y : i16 = 0; y < 64; y+=1 {
+    for x : i16 = 0; x < 32; x+=1 {
+        for y : i16 = 0; y < 32; y+=1 {
             genChunkModel(_game,x,0,y,_game.texture)
             
         }    
@@ -319,8 +318,8 @@ runGame :: proc(_game : ^Game) {
         rl.ClearBackground(rl.SKYBLUE);
         
         rl.BeginMode3D(_game.cam);
-        for x : i16 = 0; x < 64; x+=1 {
-            for y : i16 = 0; y < 64; y+=1 {
+        for x : i16 = 0; x < 32; x+=1 {
+            for y : i16 = 0; y < 32; y+=1 {
                 rl.DrawMesh(_game.meshes[x][y],mat,rl.MatrixTranslate(1,1,1))
         
             }
