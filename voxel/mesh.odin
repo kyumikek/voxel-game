@@ -150,10 +150,10 @@ genMesh :: proc(_blocks : [dynamic]Cube, _faces : [dynamic]Faces, _types : [dyna
 checkObscures :: proc(_game : ^Game, x : i16, y : i16, z : i16) -> Faces {
     faces : Faces = {false, false, false, false, false, false}
     if (z+1 < 1024) { if (_game.aliveCubes[x][y][z+1]!=255) { faces.back = true } } // back
-    if (z > 0) { if (_game.aliveCubes[x][y][z-1]!=255) { faces.front = true } } // front
+    if (z-1> -1) { if (_game.aliveCubes[x][y][z-1]!=255) { faces.front = true } } // front
     if (y+1 < 256) { if (_game.aliveCubes[x][y+1][z]!=255) { faces.top = true } } // top
-    if (y > 0) { if (_game.aliveCubes[x][y-1][z]!=255) { faces.bottom = true } } // bottom
-    if (x > 0) { if (_game.aliveCubes[x-1][y][z]!=255) { faces.left = true } } // left
+    if (y-1 > -1) { if (_game.aliveCubes[x][y-1][z]!=255) { faces.bottom = true } } // bottom
+    if (x-1 > -1) { if (_game.aliveCubes[x-1][y][z]!=255) { faces.left = true } } // left
     if (x+1 < 1024) { if (_game.aliveCubes[x+1][y][z]!=255) { faces.right = true } } // right
 
     return faces
@@ -169,7 +169,7 @@ checkAmbience :: proc(_game : ^Game, x : i16, y : i16, z : i16) -> Faces {
     
     return faces
 }
-genChunkModel :: proc(_game : ^Game, x : i16, y : i16, z : i16, texture : rl.Texture2D) {
+genChunkModel :: proc(_game : ^Game, x : i16, y : i16, z : i16) {
 	//setup data
     blocks : [dynamic]Cube
     faces : [dynamic]Faces
@@ -194,3 +194,4 @@ genChunkModel :: proc(_game : ^Game, x : i16, y : i16, z : i16, texture : rl.Tex
     }
     _game.meshes[x][z] = genMesh(blocks,faces,types,ambients)
 }
+
