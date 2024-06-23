@@ -77,11 +77,25 @@ flatLands :: proc(_game : ^Game, x : i16, z : i16, structures : ^[dynamic] World
 		append(structures,WorldStructure{x,highest_point+1,z,tree_type})			
 	}
 }
-mountainLands :: proc(_game : ^Game, x : i16, z : i16, structures : ^[dynamic] WorldStructure, p : []int) {
+highLands :: proc(_game : ^Game, x : i16, z : i16, structures : ^[dynamic] WorldStructure, p : []int) { //finished, only need o add structure generation. Overall I am very happy with the result ;)
+	height2 := noise.perlin(cast(f32)x/10,0,cast(f32)z/10,p)  + noise.perlin(cast(f32)x/10,0,cast(f32)z/10,p) 
 	height := noise.perlin(cast(f32)x/80,0,cast(f32)z/80,p)  + noise.perlin(cast(f32)x/80,0,cast(f32)z/80,p);
 	mountain_height := height* 60;
 	for y : i16 = 1; y < 256; y+=1 { 
-		if  (y<=cast(i16)mountain_height+80) {
+		if  ((y<80 && height2<0) || (y<81 && height2>=0)) {
+			_game.aliveCubes[x][y][z] = 2
+			if ((y==79 && height2<0) || (y==80 && height2>=0)) {
+				_game.aliveCubes[x][y][z] = 0
+				_game.aliveCubes[x][y-1][z] = 4
+				
+				if rl.GetRandomValue(0,200)==1 {
+					append(structures,WorldStructure{x,y,z,0})	
+				}
+				
+			}
+			
+		}
+		else if  (y<=cast(i16)mountain_height+80 && y>79) {
 			_game.aliveCubes[x][y][z] = 2
 			
 			if (y==cast(i16)mountain_height+80) {
@@ -95,17 +109,6 @@ mountainLands :: proc(_game : ^Game, x : i16, z : i16, structures : ^[dynamic] W
 			}
 			
 		}
-		else if y<80 {
-			_game.aliveCubes[x][y][z] = 2
-			if (y==79) {
-				_game.aliveCubes[x][y][z] = 0
-				_game.aliveCubes[x][y-1][z] = 4
-				
-				if rl.GetRandomValue(0,200)==1 {
-					append(structures,WorldStructure{x,y,z,0})	
-				}
-			}
-		}
 		else {
 			_game.aliveCubes[x][y][z] = 255
 		}
@@ -118,7 +121,7 @@ genWorld :: proc(_game : ^Game) {
     structures : [dynamic] WorldStructure
     for x : i16 = 1; x < 1024; x+=1 {
         for z : i16 = 1; z < 1024; z+=1 {
-            mountainLands(_game,x,z,&structures,p);
+            highLands(_game,x,z,&structures,p);
         }
     }
     for structure in structures { //temporary, will be made into a hashmap
