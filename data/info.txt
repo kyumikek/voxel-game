@@ -1,0 +1,4 @@
+cool biome noise width and height
+- x: 28 y: 6
+- x: 7 y: 24
+- x: 20 y: 4

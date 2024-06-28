@@ -17,13 +17,17 @@ Faces :: struct {
     left : bool,
     right : bool
 }
+StructureData :: struct {
+    poses : [dynamic]Cube,
+    types : [dynamic]u8
+}
 Game :: struct #packed {
     cam : rl.Camera3D,
     aliveCubes : [1024][257][1024]u8,
     meshes : [64][64]rl.Mesh,
     material : rl.Material,
     renderDistance : i16,
-    
+    structures : map[string]StructureData
 }
 ChunkModel :: struct {
     vertex_count : int,

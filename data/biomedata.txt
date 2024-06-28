@@ -1,0 +1,20 @@
+name: highlands
+id: 0
+name: magic land
+id: 1
+name: desert 
+id: 2
+name: ocean 
+id: 3
+name: flat fields 
+id: 4
+name: messa 
+id: 5
+name: mountains 
+id: 6
+name: ice field 
+id: 7
+name: snowlands 
+id: 8
+name: cherry biome 
+id: 9

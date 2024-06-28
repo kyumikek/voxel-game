@@ -2,6 +2,43 @@ package voxel
 import rl "../raylib"
 import noise "../noise"
 import "core:fmt"
+
+import "core:os"
+import "core:strings"
+import "core:strconv"
+loadStructure :: proc(filepath : string, type : string,game : ^Game) {
+    data, ok := os.read_entire_file(filepath,context.allocator)
+    if !ok {
+        fmt.println("unable to load the structure")
+        return
+    }
+    defer delete(data,context.allocator)
+
+    it := string(data)
+    cubes : [dynamic]Cube
+	types : [dynamic]u8
+	for line in strings.split_lines_iterator(&it) {
+        elements := strings.split(line," ",context.temp_allocator)
+        cube := Cube{i16(strconv.atoi(elements[0])),i16(strconv.atoi(elements[1])),i16(strconv.atoi(elements[2]))}
+		type : u8 = u8(strconv.atoi(elements[3]))
+		append(&cubes,cube)
+		append(&types,type)
+    }
+	game.structures[type] = {
+		cubes,types
+	}
+	fmt.println(game.structures[type])
+}
+genStructure :: proc(type : string, game : ^Game, x : i16, y : i16, z : i16) {
+	currentBlock : int = 0
+	for value in game.structures[type].poses {
+		if (value.x+x>0 && value.x+x<1024 && value.y+y>-1 && value.y+y<256 && value.z+z>0 && value.z+z<1024) {
+			game.aliveCubes[value.x+x][value.y+y][value.z+z] = game.structures[type].types[currentBlock]
+		}
+		currentBlock+=1
+	}
+	//game.aliveCubes[x][y][z] 
+}
 genTree :: proc(_game : ^Game, x : i16, highest_point : i16, z : i16) { //temporary we will want to make a structure loading file and use that to generate terrain. Tho it's good enough for now.
 	for y : i16 = 0; y< 5; y+=1 {
 		_game.aliveCubes[x][y+highest_point][z] = 8
@@ -62,7 +99,7 @@ flatLands :: proc(_game : ^Game, x : i16, z : i16, structures : ^[dynamic] World
 	highest_point : i16
 	for y : i16 = 1; y < 256; y+=1 { 
 		if  ((y<80 && height<0) || (y<81 && height>=0)) {
-			_game.aliveCubes[x][y][z] = 0
+			_game.aliveCubes[x][y][z] = 5
 			highest_point = y
 		}
 		else {
@@ -115,25 +152,82 @@ highLands :: proc(_game : ^Game, x : i16, z : i16, structures : ^[dynamic] World
 		
 	}
 }
+desert :: proc(_game : ^Game, x : i16, z : i16, structures : ^[dynamic]WorldStructure, p : []int) {
+	height := noise.perlin(cast(f32)x/20,0,cast(f32)z/20,p)  + noise.perlin(cast(f32)x/10,0,cast(f32)z/10,p) 
+	highest_point : i16
+	for y : i16 = 1; y < 256; y+=1 { 
+		if  ((y<80 && height<0) || (y<81 && height>=0)) {
+			_game.aliveCubes[x][y][z] = 4
+			highest_point = y
+			if (y==79 && height < 0) {
+				if height < -0.7 {
+					_game.aliveCubes[x][y][z] = 12
+				}
+				else if height < -0.6 {
+					_game.aliveCubes[x][y][z] = 0
+					if (rl.GetRandomValue(0,100)==1) {
+						tree_type : u8 = 0
+						if (rl.GetRandomValue(0,5)==1) {
+							tree_type = 1
+						}
+						append(structures,WorldStructure{x,highest_point+1,z,tree_type})			
+					}
+				}
 
+			}
+		}
+		else {
+			_game.aliveCubes[x][y][z] = 255
+		}
+	}
+	
+}
+genBiomeTypes :: proc(width : f32, height : f32) -> [64][64]i16 {
+    biomeTypes : [64][64]i16
+    p := noise.init_permutation()
+    for x : int = 0; x < 64; x+=1 {
+        for y : int = 0; y < 64; y+=1 {
+            biome : i16 = 0
+			height := noise.perlin(f32(x/100),0,f32(y/100),p)
+			
+            biomeTypes[x][y] = biome
+        }
+    }
+    return biomeTypes
+} 
 genWorld :: proc(_game : ^Game) {
     p := noise.init_permutation()
     structures : [dynamic] WorldStructure
-    for x : i16 = 1; x < 1024; x+=1 {
+    biomeTypes := genBiomeTypes(28,6)
+	for x : i16 = 1; x < 1024; x+=1 {
         for z : i16 = 1; z < 1024; z+=1 {
-            highLands(_game,x,z,&structures,p);
-        }
+			chunkX : int = int(x)/16
+			chunkZ : int = int(z)/16
+			switch(biomeTypes[chunkX][chunkZ]) {
+				case 0:
+				highLands(_game,x,z,&structures,p);
+        
+				break;
+				case 1:
+				flatLands(_game,x,z,&structures,p);
+				break;
+				case 2:
+				desert(_game,x,z,&structures,p);
+				break;
+            }
+		}
     }
+	
     for structure in structures { //temporary, will be made into a hashmap
 		switch structure.kind {
 			case 0:
-				genTree(_game,structure.x,structure.y,structure.z);
+				genStructure("house",_game,structure.x,structure.y,structure.z)
+				//genTree(_game,structure.x,structure.y,structure.z);
 			break;
 			case 1:
 				genTreeFallenOver(_game,structure.x,structure.y,structure.z);
 			break;
 		}
-		fmt.println(structure)
     }
     for x : i16 = 0; x < 32; x+=1 {
         for y : i16 = 0; y < 32; y+=1 {
@@ -174,6 +268,7 @@ updateWorld :: proc(_game :^Game) {
     }
 	updatePlayer(_game);
 }
+
 setupWorld :: proc(_game : ^Game) {
 	
 }
