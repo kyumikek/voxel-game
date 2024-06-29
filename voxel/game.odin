@@ -8,6 +8,7 @@ setupGame :: proc(_game : ^Game, width : i32, height : i32) {
     _game.meshes = {}
     _game.aliveCubes = {}
 	_game.renderDistance = 16
+    _game.y_velocity = 0;
 	//setup raylib stuff
 	rl.InitWindow(width,height,"a");
     rl.SetTargetFPS(60);
@@ -15,6 +16,7 @@ setupGame :: proc(_game : ^Game, width : i32, height : i32) {
     rl.DisableCursor();
    
     loadStructure("data/structures/house.struct","house",_game)
+    loadStructure("data/structures/tree.struct","tree",_game)
 }
 
 runGame :: proc(_game : ^Game, width : i32, height : i32) {

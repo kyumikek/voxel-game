@@ -39,60 +39,6 @@ genStructure :: proc(type : string, game : ^Game, x : i16, y : i16, z : i16) {
 	}
 	//game.aliveCubes[x][y][z] 
 }
-genTree :: proc(_game : ^Game, x : i16, highest_point : i16, z : i16) { //temporary we will want to make a structure loading file and use that to generate terrain. Tho it's good enough for now.
-	for y : i16 = 0; y< 5; y+=1 {
-		_game.aliveCubes[x][y+highest_point][z] = 8
-		
-    }
-    for tx : i16 = -2; tx < 3; tx+=1 {
-		for tz : i16 = -2; tz < 3; tz+=1 {
-			for ty : i16 = 0; ty < 2; ty+=1 {
-				if (tx+x>0 && tx+x<1024 && ty+highest_point+5>0 && ty+highest_point+5<256 && tz+z>0 && tz+z<1024) {
-					if (_game.aliveCubes[tx+x][ty+highest_point+5][tz+z]==255) {
-						_game.aliveCubes[tx+x][ty+highest_point+5][tz+z] = 10
-					}
-					
-				}
-				
-			}
-		}
-    }
-    for tx : i16 = -1; tx < 2; tx+=1 {
-		for tz : i16 = -1; tz < 2; tz+=1 {
-			for ty : i16 = 2; ty < 4; ty+=1 {
-				if (tx+x>0 && tx+x<1024 && ty+highest_point+5>0 && ty+highest_point+5<256 && tz+z>0 && tz+z<1024) {
-					if (_game.aliveCubes[tx+x][ty+highest_point+5][tz+z]==255) {
-						_game.aliveCubes[tx+x][ty+highest_point+5][tz+z] = 10
-					}
-					
-				}
-				
-			}
-		}
-    }
-}
-genTreeFallenOver :: proc(_game : ^Game, x : i16, highest_point : i16, z : i16) { //temporary we will want to make a structure loading file and use that to generate terrain. Tho it's good enough for now.
-	for y : i16 = 0; y< 5; y+=1 {
-		if (x+y>0 && x+y<1024) {
-			_game.aliveCubes[x+y][highest_point][z] = 8
-		
-		}
-    }
-    for tx : i16 = -1; tx < 2; tx+=1 {
-		for tz : i16 = -1; tz < 2; tz+=1 {
-			for ty : i16 = 0; ty < 2; ty+=1 {
-				if (tx+x+5>0 && tx+x+5<1024 && ty+highest_point>0 && ty+highest_point<256 && tz+z>0 && tz+z<1024) {
-					if (_game.aliveCubes[tx+x+5][ty+highest_point][tz+z]==255) {
-						_game.aliveCubes[tx+x+5][ty+highest_point][tz+z] = 10
-					}
-					
-				}
-				
-			}
-		}
-    }
-    
-}
 
 flatLands :: proc(_game : ^Game, x : i16, z : i16, structures : ^[dynamic] WorldStructure, p : []int) {
 	height := noise.perlin(cast(f32)x/20,0,cast(f32)z/20,p)  + noise.perlin(cast(f32)x/10,0,cast(f32)z/10,p) 
@@ -221,11 +167,11 @@ genWorld :: proc(_game : ^Game) {
     for structure in structures { //temporary, will be made into a hashmap
 		switch structure.kind {
 			case 0:
-				genStructure("house",_game,structure.x,structure.y,structure.z)
+				genStructure("tree",_game,structure.x,structure.y,structure.z)
 				//genTree(_game,structure.x,structure.y,structure.z);
 			break;
 			case 1:
-				genTreeFallenOver(_game,structure.x,structure.y,structure.z);
+				genStructure("house",_game,structure.x,structure.y,structure.z)
 			break;
 		}
     }

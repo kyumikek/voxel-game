@@ -23,6 +23,7 @@ StructureData :: struct {
 }
 Game :: struct #packed {
     cam : rl.Camera3D,
+    y_velocity : f32,
     aliveCubes : [1024][257][1024]u8,
     meshes : [64][64]rl.Mesh,
     material : rl.Material,

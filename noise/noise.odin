@@ -32,7 +32,7 @@ grad :: proc(hash : int, x : f32, y : f32, z : f32) -> f32 {
 init_permutation :: proc() -> []int {
     p_perm := [256]int{};
     for i : int = 0; i < 256; i+=1 {
-        p_perm[i] = int(rl.GetRandomValue(0,256))
+        p_perm[i] = int(rl.GetRandomValue(0,255))
     }
 
     p := make([]int, 512)
